@@ -1,0 +1,24 @@
+{
+  "name": "KCM Transit",
+  "short_name": "KCM Transit",
+  "description": "Real-time King County Metro alerts, bus arrivals, and Link Light Rail status",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#006633",
+  "theme_color": "#006633",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

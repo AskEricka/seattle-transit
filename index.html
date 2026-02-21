@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="KCM Transit"/>
+  <meta name="theme-color" content="#006633"/>
+  <title>KCM Transit</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <style>
+    :root {
+      --green: #006633;
+      --green-light: #00843D;
+      --green-dark: #004d26;
+      --gold: #FFB900;
+      --red: #C50F1F;
+      --orange: #D83600;
+      --bg: #f5f5f5;
+      --card: #ffffff;
+      --text: #111;
+      --subtext: #555;
+      --border: #e0e0e0;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overscroll-behavior: none; }
+
+    /* Header */
+    .header { background: var(--green); color: #fff; padding: 52px 16px 14px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+    .header h1 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .header .subtitle { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .header .refresh-btn { position: absolute; right: 16px; top: 50px; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; padding: 6px; border-radius: 50%; transition: background 0.2s; }
+    .header .refresh-btn:active { background: rgba(255,255,255,0.2); }
+    .last-updated { font-size: 11px; opacity: 0.7; margin-top: 3px; }
+
+    /* Tabs */
+    .tabs { display: flex; background: var(--green-dark); }
+    .tab { flex: 1; padding: 10px 4px; text-align: center; color: rgba(255,255,255,0.6); font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .tab.active { color: #fff; border-bottom-color: var(--gold); }
+
+    /* Content */
+    .content { padding: 12px; padding-bottom: calc(20px + var(--safe-bottom)); max-width: 600px; margin: 0 auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Cards */
+    .card { background: var(--card); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+    .card-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+    .badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+    .badge-red { background: var(--red); color: #fff; }
+    .badge-orange { background: var(--orange); color: #fff; }
+    .badge-green { background: var(--green); color: #fff; }
+    .badge-gold { background: var(--gold); color: #000; }
+    .badge-gray { background: #888; color: #fff; }
+    .card-title { font-size: 14px; font-weight: 600; line-height: 1.3; }
+    .card-body { font-size: 13px; color: var(--subtext); line-height: 1.5; }
+    .card-footer { margin-top: 8px; font-size: 12px; color: var(--subtext); display: flex; align-items: center; gap: 6px; }
+    .card-footer a { color: var(--green); text-decoration: none; font-weight: 500; }
+
+    /* Arrivals */
+    .stop-selector { background: var(--card); border-radius: 12px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+    .stop-selector label { font-size: 12px; font-weight: 600; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px; }
+    .stop-selector select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; background: var(--bg); color: var(--text); appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23555'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+    .arrival-row { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+    .arrival-row:last-child { border-bottom: none; }
+    .route-bubble { width: 40px; height: 40px; border-radius: 10px; background: var(--green); color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; text-align: center; line-height: 1.1; }
+    .route-bubble.rapid { background: #003087; }
+    .route-bubble.link { background: #003087; }
+    .arrival-info { flex: 1; min-width: 0; }
+    .arrival-dest { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .arrival-sched { font-size: 12px; color: var(--subtext); margin-top: 1px; }
+    .arrival-time { text-align: right; flex-shrink: 0; }
+    .arrival-mins { font-size: 20px; font-weight: 700; color: var(--green); }
+    .arrival-mins.soon { color: var(--red); }
+    .arrival-mins-label { font-size: 11px; color: var(--subtext); }
+
+    /* Empty / Loading */
+    .empty { text-align: center; padding: 40px 20px; color: var(--subtext); }
+    .empty .icon { font-size: 40px; margin-bottom: 10px; }
+    .loading { display: flex; justify-content: center; padding: 30px; }
+    .spinner { width: 30px; height: 30px; border: 3px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Section title */
+    .section-title { font-size: 12px; font-weight: 700; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.6px; margin: 16px 0 8px; }
+
+    /* Alert count chip */
+    .alert-chip { background: var(--red); color: #fff; border-radius: 10px; padding: 1px 6px; font-size: 11px; font-weight: 700; margin-left: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🚌 KCM Transit</h1>
+  <div class="subtitle">King County Metro · Real-time</div>
+  <div class="last-updated" id="lastUpdated">Loading...</div>
+  <button class="refresh-btn" onclick="refresh()" title="Refresh">↻</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('alerts')">🔔 Alerts <span class="alert-chip" id="alertChip" style="display:none">0</span></div>
+  <div class="tab" onclick="showTab('arrivals')">🚏 Arrivals</div>
+  <div class="tab" onclick="showTab('trains')">🚆 Link / Sounder</div>
+</div>
+
+<div class="content">
+
+  <!-- ALERTS PAGE -->
+  <div class="page active" id="page-alerts">
+    <div class="loading" id="alerts-loading"><div class="spinner"></div></div>
+    <div id="alerts-content"></div>
+  </div>
+
+  <!-- ARRIVALS PAGE -->
+  <div class="page" id="page-arrivals">
+    <div class="stop-selector">
+      <label>Select a Stop</label>
+      <select id="stopSelect" onchange="loadArrivals()">
+        <option value="1_430">3rd Ave & Pine St (SB) — Stop #430</option>
+        <option value="1_575">3rd Ave & Pike St (NB) — Stop #575</option>
+        <option value="1_2010">Westlake Station — Stop #2010</option>
+        <option value="1_400">3rd Ave & Bell St (SB) — Stop #400</option>
+        <option value="1_605">3rd Ave & Bell St (NB) — Stop #605</option>
+        <option value="1_433">3rd Ave & Pike St (SB) — Stop #433</option>
+        <option value="40_99610">Capitol Hill Link Station</option>
+        <option value="40_70010">Westlake Link Station</option>
+        <option value="40_99124">Beacon Hill Link Station</option>
+      </select>
+    </div>
+    <div class="loading" id="arrivals-loading" style="display:none"><div class="spinner"></div></div>
+    <div id="arrivals-content"></div>
+  </div>
+
+  <!-- TRAINS PAGE -->
+  <div class="page" id="page-trains">
+    <div class="loading" id="trains-loading"><div class="spinner"></div></div>
+    <div id="trains-content"></div>
+  </div>
+
+</div>
+
+<script>
+const API = 'https://api.pugetsound.onebusaway.org/api/where';
+const KEY = 'TEST';
+let currentTab = 'alerts';
+
+function showTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['alerts','arrivals','trains'][i] === tab);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  if (tab === 'arrivals') loadArrivals();
+  if (tab === 'trains') loadTrains();
+}
+
+function refresh() {
+  if (currentTab === 'alerts') loadAlerts();
+  else if (currentTab === 'arrivals') loadArrivals();
+  else loadTrains();
+}
+
+async function fetchOBA(path) {
+  const sep = path.includes('?') ? '&' : '?';
+  const r = await fetch(`${API}${path}${sep}key=${KEY}`);
+  return r.json();
+}
+
+function timeAgo() {
+  return new Date().toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'});
+}
+
+// ── ALERTS ────────────────────────────────────────────────────────────────
+async function loadAlerts() {
+  document.getElementById('alerts-loading').style.display = 'flex';
+  document.getElementById('alerts-content').innerHTML = '';
+  try {
+    const stops = ['1_430','1_575','40_70010','40_99610'];
+    const allSituations = new Map();
+    await Promise.all(stops.map(async stop => {
+      const d = await fetchOBA(`/arrivals-and-departures-for-stop/${stop}.json`);
+      const sits = d?.data?.references?.situations || [];
+      const now = d?.currentTime || Date.now();
+      sits.forEach(s => {
+        if (!allSituations.has(s.id)) allSituations.set(s.id, {...s, _now: now});
+      });
+    }));
+
+    const situations = Array.from(allSituations.values());
+    const chip = document.getElementById('alertChip');
+    if (situations.length > 0) {
+      chip.textContent = situations.length;
+      chip.style.display = 'inline';
+    } else {
+      chip.style.display = 'none';
+    }
+
+    let html = '';
+    if (situations.length === 0) {
+      html = `<div class="empty"><div class="icon">✅</div><div>No active service alerts</div></div>`;
+    } else {
+      situations.forEach(s => {
+        const summary = s.summary?.value || '';
+        const desc = (s.description?.value || '').replace(/\r\n/g,'<br>').replace(/\n/g,'<br>');
+        const reason = s.reason || '';
+        const url = s.url?.value || '';
+        const windows = s.activeWindows || [];
+        let until = '';
+        if (windows.length) {
+          const end = new Date(windows[0].to);
+          until = `Until ${end.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+        }
+        const badgeClass = reason === 'CONSTRUCTION' ? 'badge-orange' : reason === 'TECHNICAL_PROBLEM' ? 'badge-red' : 'badge-gold';
+        const badgeLabel = reason === 'CONSTRUCTION' ? '🚧 Construction' : reason === 'TECHNICAL_PROBLEM' ? '⚡ Technical' : '⚠️ Alert';
+        html += `
+          <div class="card">
+            <div class="card-header">
+              <span class="badge ${badgeClass}">${badgeLabel}</span>
+              <div class="card-title">${summary}</div>
+            </div>
+            ${desc ? `<div class="card-body">${desc}</div>` : ''}
+            <div class="card-footer">
+              ${until ? `🕐 ${until}` : ''}
+              ${url ? `&nbsp;·&nbsp;<a href="${url}" target="_blank">Trip Planner →</a>` : ''}
+            </div>
+          </div>`;
+      });
+    }
+    document.getElementById('alerts-content').innerHTML = html;
+    document.getElementById('lastUpdated').textContent = `Updated ${timeAgo()}`;
+  } catch(e) {
+    document.getElementById('alerts-content').innerHTML = `<div class="empty"><div class="icon">⚠️</div><div>Could not load alerts. Check your connection.</div></div>`;
+  }
+  document.getElementById('alerts-loading').style.display = 'none';
+}
+
+// ── ARRIVALS ──────────────────────────────────────────────────────────────
+async function loadArrivals() {
+  const stopId = document.getElementById('stopSelect').value;
+  document.getElementById('arrivals-loading').style.display = 'flex';
+  document.getElementById('arrivals-content').innerHTML = '';
+  try {
+    const d = await fetchOBA(`/arrivals-and-departures-for-stop/${stopId}.json`);
+    const now = d?.currentTime || Date.now();
+    const arrivals = d?.data?.entry?.arrivalsAndDepartures || [];
+    const routes = {};
+    (d?.data?.references?.routes || []).forEach(r => routes[r.id] = r.shortName || r.id);
+
+    if (arrivals.length === 0) {
+      document.getElementById('arrivals-content').innerHTML = `<div class="empty"><div class="icon">🚏</div><div>No upcoming arrivals found</div></div>`;
+    } else {
+      let html = `<div class="section-title">Next arrivals</div>`;
+      const seen = new Map();
+      arrivals.slice(0, 20).forEach(a => {
+        const routeName = routes[a.routeId] || '?';
+        const dest = a.tripHeadsign || 'Unknown';
+        const pred = a.predictedArrivalTime || a.scheduledArrivalTime || 0;
+        const mins = Math.round((pred - now) / 60000);
+        const isPredicted = !!a.predictedArrivalTime;
+        const schedTime = new Date(a.scheduledArrivalTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        const isRapid = ['C Line','D Line','E Line','H Line'].includes(routeName);
+        const isLink = routeName.includes('Line') && !isRapid;
+        const bubbleClass = isRapid || isLink ? 'rapid' : '';
+        const minsClass = mins <= 2 ? 'soon' : '';
+        const minsLabel = mins < 0 ? 'departed' : mins === 0 ? 'now' : `${mins} min`;
+        html += `
+          <div class="arrival-row">
+            <div class="route-bubble ${bubbleClass}">${routeName}</div>
+            <div class="arrival-info">
+              <div class="arrival-dest">${dest}</div>
+              <div class="arrival-sched">${isPredicted ? 'Live' : 'Scheduled'} · ${schedTime}</div>
+            </div>
+            <div class="arrival-time">
+              <div class="arrival-mins ${minsClass}">${minsLabel}</div>
+            </div>
+          </div>`;
+      });
+      document.getElementById('arrivals-content').innerHTML = `<div class="card">${html}</div>`;
+    }
+    document.getElementById('lastUpdated').textContent = `Updated ${timeAgo()}`;
+  } catch(e) {
+    document.getElementById('arrivals-content').innerHTML = `<div class="empty"><div class="icon">⚠️</div><div>Could not load arrivals.</div></div>`;
+  }
+  document.getElementById('arrivals-loading').style.display = 'none';
+}
+
+// ── TRAINS ────────────────────────────────────────────────────────────────
+async function loadTrains() {
+  document.getElementById('trains-loading').style.display = 'flex';
+  document.getElementById('trains-content').innerHTML = '';
+  try {
+    const linkStops = ['40_70010','40_99610','40_623'];
+    const allSits = new Map();
+    const allArrivals = [];
+
+    await Promise.all(linkStops.map(async stop => {
+      const d = await fetchOBA(`/arrivals-and-departures-for-stop/${stop}.json`);
+      const now = d?.currentTime || Date.now();
+      (d?.data?.references?.situations || []).forEach(s => {
+        if (!allSits.has(s.id)) allSits.set(s.id, {...s, _now: now});
+      });
+      const routes = {};
+      (d?.data?.references?.routes || []).forEach(r => routes[r.id] = r.shortName || r.id);
+      const arrivals = d?.data?.entry?.arrivalsAndDepartures || [];
+      arrivals.forEach(a => allArrivals.push({...a, _now: now, _stop: stop, _routeName: routes[a.routeId] || '?'}));
+    }));
+
+    let html = '';
+
+    // Alerts
+    const sits = Array.from(allSits.values());
+    if (sits.length > 0) {
+      html += `<div class="section-title">⚠️ Active Alerts</div>`;
+      sits.forEach(s => {
+        const summary = s.summary?.value || '';
+        const desc = (s.description?.value || '').replace(/\r\n/g,'<br>');
+        const badgeClass = s.reason === 'TECHNICAL_PROBLEM' ? 'badge-red' : 'badge-orange';
+        html += `<div class="card"><div class="card-header"><span class="badge ${badgeClass}">${s.reason === 'TECHNICAL_PROBLEM' ? '⚡ Technical' : '⚠️ Alert'}</span><div class="card-title">${summary}</div></div>${desc ? `<div class="card-body">${desc}</div>` : ''}</div>`;
+      });
+    } else {
+      html += `<div class="card"><div style="text-align:center;padding:8px;color:#555">✅ No active train alerts</div></div>`;
+    }
+
+    // Arrivals at Westlake Link
+    html += `<div class="section-title">Next trains at Westlake Link</div><div class="card">`;
+    const linkArrivals = allArrivals.filter(a => a._stop === '40_70010').slice(0,10);
+    if (linkArrivals.length === 0) {
+      html += `<div class="empty"><div>No upcoming trains found</div></div>`;
+    } else {
+      linkArrivals.forEach(a => {
+        const mins = Math.round((( a.predictedArrivalTime || a.scheduledArrivalTime) - a._now) / 60000);
+        const minsLabel = mins < 0 ? 'departed' : mins === 0 ? 'Now' : `${mins} min`;
+        const minsClass = mins <= 2 ? 'soon' : '';
+        const sched = new Date(a.scheduledArrivalTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        html += `<div class="arrival-row">
+          <div class="route-bubble link">${a._routeName}</div>
+          <div class="arrival-info"><div class="arrival-dest">${a.tripHeadsign || 'Unknown'}</div><div class="arrival-sched">${a.predictedArrivalTime ? 'Live' : 'Scheduled'} · ${sched}</div></div>
+          <div class="arrival-time"><div class="arrival-mins ${minsClass}">${minsLabel}</div></div>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+    document.getElementById('trains-content').innerHTML = html;
+    document.getElementById('lastUpdated').textContent = `Updated ${timeAgo()}`;
+  } catch(e) {
+    document.getElementById('trains-content').innerHTML = `<div class="empty"><div class="icon">⚠️</div><div>Could not load train data.</div></div>`;
+  }
+  document.getElementById('trains-loading').style.display = 'none';
+}
+
+// Auto-refresh every 60 seconds
+setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 60000);
+
+// Initial load
+loadAlerts();
+loadArrivals();
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+</body>
+</html>
